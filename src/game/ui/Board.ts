@@ -48,6 +48,13 @@ export class Board extends Container {
     return this.tiles.map((t) => t.getChoice());
   }
 
+  /** Returns the stage-space X centre of each tile in index order 0–4. */
+  getTileCenterWorldXs(): number[] {
+    return this.tiles.map((tile) =>
+      this.position.x + tile.position.x + TILE_W / 2
+    );
+  }
+
   /** Spec alias for getChoices(). */
   getPlayerMoves(): RPSChoice[] { return this.getChoices(); }
 

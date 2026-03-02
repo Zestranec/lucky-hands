@@ -6,7 +6,7 @@ export const MOBILE = SCREEN_W < 760;
 
 // ─── Canvas ───────────────────────────────────────────────────────────────────
 export const CANVAS_W = MOBILE ? 460 : 800;
-export const CANVAS_H = MOBILE ? 700 : 620;
+export const CANVAS_H = MOBILE ? 790 : 722;
 
 // ─── HUD (top bar) ────────────────────────────────────────────────────────────
 export const HUD_H     = MOBILE ? 56 : 66;
@@ -44,8 +44,12 @@ export const TILE_ROW2_Y = MOBILE ? TILE_H + TILE_ROW_GAP : 0;
 
 export const BOARD_HEIGHT = MOBILE ? TILE_H * 2 + TILE_ROW_GAP : TILE_H;
 
-// ─── Info label (hint text between board and controls) ───────────────────────
-export const INFO_LABEL_Y = BOARD_Y + BOARD_HEIGHT + GAP_M;
+// ─── Portal lane (animation strip between board and info label) ──────────────
+export const PORTAL_LANE_H = MOBILE ? 80 : 90;
+export const PORTAL_LANE_Y = BOARD_Y + BOARD_HEIGHT + GAP_M;
+
+// ─── Info label (hint text between portal lane and controls) ─────────────────
+export const INFO_LABEL_Y = PORTAL_LANE_Y + PORTAL_LANE_H + GAP_S;
 
 // ─── Controls column (Play button stacked above Bet selector) ─────────────────
 export const CONTROLS_Y  = INFO_LABEL_Y + GAP_L;

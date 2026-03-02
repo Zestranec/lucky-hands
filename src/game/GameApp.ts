@@ -7,6 +7,7 @@ import { HUD } from './ui/HUD';
 import { Board } from './ui/Board';
 import { ResultPanel } from './ui/ResultPanel';
 import { Preloader } from './ui/Preloader';
+import { PortalLane } from './ui/portal/PortalLane';
 import type { VolatilityMode, RoundResult, RPSChoice } from './models/Types';
 import {
   CANVAS_W, CANVAS_H,
@@ -14,7 +15,7 @@ import {
   PLAY_BTN_X, PLAY_BTN_Y, PLAY_BTN_W, PLAY_BTN_H,
   BET_SEL_X, BET_SEL_Y, BET_SEL_W, BET_SEL_H,
   BET_BTN_W, BET_DISPLAY_W,
-  INFO_LABEL_Y,
+  INFO_LABEL_Y, PORTAL_LANE_Y,
   COLOR,
 } from './utils/layout';
 
@@ -33,6 +34,7 @@ export class GameApp {
   private sm!: GameStateMachine;
   private hud!: HUD;
   private board!: Board;
+  private portalLane!: PortalLane;
 
   // Play button internals
   private playBtnBg!: Graphics;
@@ -85,8 +87,17 @@ export class GameApp {
     });
 
     const canvas = this.app.view as HTMLCanvasElement;
-    canvas.style.maxWidth = '100%';
-    canvas.style.height   = 'auto';
+
+    // Scale canvas to fill the viewport (portrait-safe, 20px padding each side)
+    const PAD     = 20;
+    const cssScale = Math.min(
+      (window.innerWidth  - PAD * 2) / CANVAS_W,
+      (window.innerHeight - PAD * 2) / CANVAS_H,
+    );
+    canvas.style.width    = `${Math.round(CANVAS_W * cssScale)}px`;
+    canvas.style.height   = `${Math.round(CANVAS_H * cssScale)}px`;
+    canvas.style.maxWidth = 'none';
+
     document.body.appendChild(canvas);
 
     this.app.stage.eventMode = 'static';
@@ -108,7 +119,12 @@ export class GameApp {
     this.board.position.set(BOARD_X, BOARD_Y);
     this.app.stage.addChild(this.board);
 
-    // Info label (between board and controls)
+    // Portal lane (between board and info label)
+    this.portalLane = new PortalLane(this.app.ticker);
+    this.portalLane.position.set(0, PORTAL_LANE_Y);
+    this.app.stage.addChild(this.portalLane);
+
+    // Info label (between portal lane and controls)
     this.infoLabel = new Text('', new TextStyle({
       fontFamily: 'Arial',
       fontSize:   13,
@@ -179,6 +195,7 @@ export class GameApp {
     }
 
     this.sm.transition('reset');
+    this.portalLane.reset();
     this.board.reset();
     this.hud.setVolEnabled(true);
     this.hud.setActiveVol(this.nextVol);
@@ -197,15 +214,26 @@ export class GameApp {
     this.board.showAllPending();
     this.setInfoText('House is choosing...');
 
+    // Runner walks in concurrently with the first 450ms delay (arrives in ~350ms)
+    void this.portalLane.beginEntry();
+
     for (let i = 0; i < 5; i++) {
       await this.delay(i === 0 ? 450 : 320);
       const outcome = getTileOutcome(result.playerMoves[i], result.houseMoves[i]);
-      await this.board.revealTile(i, result.houseMoves[i], outcome);
+
+      // Tile flip (~280ms) and portal outcome (~700-900ms) run concurrently
+      await Promise.all([
+        this.board.revealTile(i, result.houseMoves[i], outcome),
+        this.portalLane.playTileOutcome(i, outcome),
+      ]);
     }
 
     this.sm.transition('resolve');
     this.setInfoText('');
     await this.delay(280);
+
+    // Victory dance or shark-eat finale
+    await this.portalLane.playFinale(result.payout > 0);
 
     this.balance = this.balance - result.bet + result.payout;
     this.hud.setBalance(this.balance);
